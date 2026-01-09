@@ -71,15 +71,24 @@ When a new attack vector (e.g., a "Layering" Scheme) is detected at one bank, th
     ```bash
     cd client && npm install
     cd ../server && npm install
+    
+    # Setup Python ML Engine
+    cd ../ml-engine
+    pip install -r requirements.txt
+    python train.py
     ```
 
 3.  **Launch the Grid**
     ```bash
-    # Terminal 1: Start the Federation Server
+    # Terminal 1: Start the AI Engine (Port 3100)
+    cd ml-engine
+    python server.py
+
+    # Terminal 2: Start the Node.js Backend (Port 3001)
     cd server
     node index.js
     
-    # Terminal 2: Start the Dashboard
+    # Terminal 3: Start the Dashboard (Port 3000)
     cd client
     npm run dev
     ```

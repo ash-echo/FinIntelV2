@@ -1,101 +1,94 @@
 // In-Memory User History for Behavioral Analysis
 // Key: userId, Value: { lastLocation: string, lastTimestamp: number, txCountLastMinute: number, history: [] }
 const userProfiles = new Map();
+const axios = require('axios'); // Requires: npm install axios
 
 /**
- * Analyzes a transaction using Enterprise-Grade heuristics.
- * Now includes:
- * 1. Velocity Checks (Card Testing / Bot Detection)
- * 2. Impossible Travel (Geo-velocity)
- * 3. High Value & Device Fingerprinting
- * 
- * @param {object} tx - The transaction object
- * @returns {object} { score, decision, reasons }
+ * Enhanced Risk Analysis using Hybrid ML Stack (Node.js + Python)
+ * calls localhost:8000/predict
  */
-function analyzeRisk(tx) {
-    let score = 0;
-    let reasons = [];
+async function analyzeRisk(tx) {
+    const now = Date.now();
 
-    // Initialize or Fetch User Profile
+    // Initialize or Fetch User Profile (for fallback heuristics)
     if (!userProfiles.has(tx.userId)) {
         userProfiles.set(tx.userId, {
             lastLocation: tx.location,
-            lastTimestamp: Date.now(),
+            lastTimestamp: now,
             recentTransactions: []
         });
     }
-
     const profile = userProfiles.get(tx.userId);
-    const now = Date.now();
 
-    // --- 1. VELOCITY CHECK (Bot/Spam Detection) --
-    // Filter transactions from the last 60 seconds
-    profile.recentTransactions = profile.recentTransactions.filter(t => now - t.timestamp < 60000);
-    profile.recentTransactions.push({ timestamp: now, amount: tx.amount });
+    // Default Fallback Structure
+    let finalResult = {
+        score: 0,
+        decision: 'ALLOW',
+        reasons: [],
+        model_version: 'fallback-v1'
+    };
 
-    const txCount = profile.recentTransactions.length;
+    try {
+        // --- CALL PYTHON MICROSERVICE ---
+        // Timeout is critical here to avoid hanging the Node event loop
+        const response = await axios.post('http://127.0.0.1:3100/predict', {
+            amount: tx.amount,
+            timestamp: now,
+            merchant: tx.merchant || "Unknown",
+            location: tx.location || "Unknown"
+        }, { timeout: 800 });
 
-    // "Burst" Rule: > 5 tx in 1 min
-    if (txCount > 5) {
-        score += 90;
-        reasons.push('HIGH_VELOCITY_BURST'); // Major red flag
-    } else if (txCount > 3) {
-        score += 40;
-        reasons.push('VELOCITY_WARNING');
-    }
+        const mlData = response.data;
 
-    // --- 2. IMPOSSIBLE TRAVEL (Teleportation) ---
-    if (profile.lastLocation && profile.lastLocation !== tx.location) {
-        // Simple string check for now. In a real app, we'd use Lat/Lon Haversine usage.
-        // If location changed instantly (within 10 seconds), it's impossible.
-        const timeDiff = now - profile.lastTimestamp;
-        if (timeDiff < 10000) { // Less than 10 seconds to change cities
-            score += 100;
-            reasons.push('IMPOSSIBLE_TRAVEL');
+        finalResult.score = mlData.score;
+        finalResult.decision = mlData.decision;
+        finalResult.reasons = mlData.factors;
+        finalResult.model_version = mlData.model_version;
+
+    } catch (err) {
+        // --- FALLBACK HEURISTICS (Circuit Breaker) ---
+        // If Python is down or slow, we use local rules
+        // console.warn('ML Service Unavailable, using heuristics:', err.message);
+
+        let score = 0;
+        let reasons = [];
+
+        // 1. Velocity Check
+        profile.recentTransactions = profile.recentTransactions.filter(t => now - t.timestamp < 60000);
+        profile.recentTransactions.push({ timestamp: now, amount: tx.amount });
+
+        if (profile.recentTransactions.length > 5) {
+            score += 40;
+            reasons.push('VELOCITY_SPIKE_FALLBACK');
         }
+
+        // 2. Amount Check
+        if (tx.amount > 5000) {
+            score += 30;
+            reasons.push('HIGH_VALUE_FALLBACK');
+        }
+
+        // 3. Random heuristic override
+        if (Math.random() < 0.05) {
+            score += 50;
+            reasons.push('ANOMALY_FALLBACK');
+        }
+
+        finalResult.score = Math.min(100, score);
+        finalResult.reasons = reasons;
+        finalResult.model_version = 'heuristic-fallback';
+
+        if (finalResult.score > 80) finalResult.decision = 'BLOCK';
+        else if (finalResult.score > 50) finalResult.decision = 'FLAG';
+        else finalResult.decision = 'ALLOW';
     }
 
-    // --- 3. STANDARD RULES ---
-
-    // Amount Rules
-    if (tx.amount > 5000) {
-        score += 85;
-        reasons.push('CRITICAL_VALUE_TIER');
-    } else if (tx.amount > 2000) {
-        score += 60;
-        reasons.push('HIGH_VALUE_TIER');
-    }
-
-    // Suspicious Device (Random simulation)
-    if (Math.random() < 0.05) {
-        score += 30;
-        reasons.push('UNRECOGNIZED_DEVICE');
-    }
-
-    // Currency/Region Mismatch (Random simulation)
-    if (Math.random() < 0.03) {
-        score += 45;
-        reasons.push('CROSS_BORDER_ANOMALY');
-    }
-
-    // Update Profile State for Next Time
+    // Update Profile State
     profile.lastLocation = tx.location;
     profile.lastTimestamp = now;
     userProfiles.set(tx.userId, profile);
 
-    // --- DECISION LOGIC ---
-    // Cap score at 100
-    score = Math.min(score, 100);
-
-    let decision = 'ALLOW';
-    if (score >= 85) decision = 'BLOCK';
-    else if (score >= 50) decision = 'FLAG';
-
-    return {
-        score,
-        decision,
-        reasons
-    };
+    return finalResult;
 }
 
 module.exports = { analyzeRisk };

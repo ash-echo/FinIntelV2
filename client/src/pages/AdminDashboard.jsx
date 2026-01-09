@@ -18,6 +18,7 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         socket.on('sim-status', (status) => setIsSimRunning(status));
+        socket.emit('get-sim-status'); // Request initial state
         return () => socket.off('sim-status');
     }, []);
 

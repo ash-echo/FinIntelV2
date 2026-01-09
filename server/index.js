@@ -33,9 +33,9 @@ setInterval(async () => {
     const txA = generateTransaction('BANK_A');
     const txB = generateTransaction('BANK_B');
 
-    // 2. Analyze Risk
-    let riskA = analyzeRisk(txA);
-    let riskB = analyzeRisk(txB);
+    // 2. Analyze Risk (Async)
+    let riskA = await analyzeRisk(txA);
+    let riskB = await analyzeRisk(txB);
 
     // MANUAL OVERRIDE CHECK
     let criticalStop = false;
@@ -132,9 +132,9 @@ io.on('connection', async (socket) => {
 
         const allAttacks = [...attackA, ...attackB];
 
-        allAttacks.forEach(tx => {
+        allAttacks.forEach(async (tx) => {
             // Process risks
-            const risk = analyzeRisk(tx);
+            const risk = await analyzeRisk(tx);
             const fullTx = { ...tx, ...risk };
 
             // Broadcast immediately
@@ -182,6 +182,10 @@ io.on('connection', async (socket) => {
     });
 
     // --- CONTROLS ---
+    socket.on('get-sim-status', () => {
+        socket.emit('sim-status', simulationRunning);
+    });
+
     socket.emit('sim-status', simulationRunning);
 
     socket.on('start-sim', () => {
@@ -209,15 +213,16 @@ io.on('connection', async (socket) => {
         const TOTAL_ATTACKS = 20;
         let count = 0;
 
-        const interval = setInterval(() => {
+        const interval = setInterval(async () => {
             count++;
 
             // Generate a HIGH RISK transaction
             const rawTx = generateTransaction(bankId);
             // Manually override to be a threat
+            const riskAnalysis = await analyzeRisk(rawTx); // Async call
             const attackTx = {
                 ...rawTx,
-                ...analyzeRisk(rawTx), // Get base risk structure
+                ...riskAnalysis, // Get base risk structure
                 score: 85 + Math.floor(Math.random() * 14), // 85-99 score
                 decision: 'BLOCK',
                 reasons: ['COORDINATED_BATCH_ATTACK', 'VELOCITY_CHECK_FAIL']
