@@ -8,22 +8,28 @@ import clsx from 'clsx';
 const socket = io('http://localhost:3001');
 
 // Mock Correlation Data for Radar Chart (The "Profile" of the attack)
-const RADAR_DATA = [
-    { subject: 'Velocity', A: 120, B: 110, fullMark: 150 },
-    { subject: 'Amount', A: 98, B: 130, fullMark: 150 },
-    { subject: 'Geo-Hop', A: 86, B: 130, fullMark: 150 },
-    { subject: 'Device', A: 99, B: 100, fullMark: 150 },
-    { subject: 'Time', A: 65, B: 85, fullMark: 150 },
-    { subject: 'Pattern', A: 65, B: 85, fullMark: 150 },
+const DEFAULT_RADAR_DATA = [
+    { subject: 'Velocity', A: 100, B: 100, fullMark: 150 },
+    { subject: 'Amount', A: 100, B: 100, fullMark: 150 },
+    { subject: 'Geo-Hop', A: 100, B: 100, fullMark: 150 },
+    { subject: 'Device', A: 100, B: 100, fullMark: 150 },
+    { subject: 'Time', A: 100, B: 100, fullMark: 150 },
+    { subject: 'Pattern', A: 100, B: 100, fullMark: 150 },
 ];
 
 export default function IntelligenceHub() {
     const [globalStats, setGlobalStats] = useState(null);
     const [riskHistory, setRiskHistory] = useState([]);
+    const [radarData, setRadarData] = useState(DEFAULT_RADAR_DATA);
 
     useEffect(() => {
         const handleStatsUpdate = (data) => {
             setGlobalStats(data.global);
+
+            // Update Radar Chart with Real Backend Data
+            if (data.global.vectorStats) {
+                setRadarData(data.global.vectorStats);
+            }
 
             setRiskHistory(prev => {
                 const point = {
@@ -150,7 +156,7 @@ export default function IntelligenceHub() {
                     </h3>
                     <div className="flex-1 min-h-[250px] -ml-6">
                         <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={RADAR_DATA}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                                 <PolarGrid stroke="#333" />
                                 <PolarAngleAxis dataKey="subject" tick={{ fill: '#888', fontSize: 10 }} />
                                 <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />

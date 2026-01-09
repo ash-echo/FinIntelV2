@@ -30,7 +30,7 @@ function NavLink({ to, icon: Icon, label }) {
   );
 }
 
-function Layout({ children }) {
+function Layout({ children, isConnected }) {
   return (
     <div className="min-h-screen bg-background text-white flex flex-col">
       {/* Top Navigation */}
@@ -52,8 +52,8 @@ function Layout({ children }) {
 
         <div className="flex items-center gap-4 text-xs font-mono text-gray-400">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            SYSTEM ONLINE
+            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+            {isConnected ? 'SYSTEM ONLINE' : 'DISCONNECTED'}
           </div>
         </div>
       </header>
@@ -68,20 +68,30 @@ function Layout({ children }) {
 
 function App() {
   const [criticalAlert, setCriticalAlert] = useState(null);
+  const [isConnected, setIsConnected] = useState(socket.connected);
 
   useEffect(() => {
+    // Socket Connection Logic
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+
     socket.on('critical-stop', (data) => {
       setCriticalAlert(data);
     });
 
     return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
       socket.off('critical-stop');
     };
   }, []);
 
   return (
     <Router>
-      <Layout>
+      <Layout isConnected={isConnected}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/bank-a" element={<EntityDashboard entityName="Bank A" entityId="BANK_A" color="cyan" />} />

@@ -10,8 +10,34 @@ const DEVICES = ['iPhone 14', 'Pixel 7', 'Windows PC', 'MacBook Pro', 'Samsung S
  * @param {string} bankId - 'BANK_A' or 'BANK_B'
  * @returns {object} transaction
  */
+// STATE: Track where users are to prevent "teleportation"
+const userLocationMap = new Map();
+
+/**
+ * Generates a single mock transaction with REALISTIC user movement.
+ * @param {string} bankId - 'BANK_A' or 'BANK_B'
+ * @returns {object} transaction
+ */
 function generateTransaction(bankId) {
     const amount = Math.random() < 0.9 ? Math.floor(Math.random() * 200) + 5 : Math.floor(Math.random() * 5000) + 1000;
+    const userId = `USER_${Math.floor(Math.random() * 50)}`; // Reduced pool size to force collisions/history
+
+    // LOGIC: Realistic Movement
+    // 90% chance to be in the same city as last time. 10% chance to travel.
+    let location;
+    if (userLocationMap.has(userId)) {
+        if (Math.random() < 0.90) {
+            location = userLocationMap.get(userId);
+        } else {
+            // Travel to new city
+            location = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
+            userLocationMap.set(userId, location);
+        }
+    } else {
+        // First time seeing this user
+        location = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
+        userLocationMap.set(userId, location);
+    }
 
     return {
         id: uuidv4(),
@@ -20,9 +46,9 @@ function generateTransaction(bankId) {
         amount,
         currency: 'USD',
         merchant: MERCHANTS[Math.floor(Math.random() * MERCHANTS.length)],
-        location: LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)],
+        location,
         deviceId: DEVICES[Math.floor(Math.random() * DEVICES.length)],
-        userId: `USER_${Math.floor(Math.random() * 1000)}`, // Simulate repeated users
+        userId,
     };
 }
 

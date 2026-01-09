@@ -64,12 +64,22 @@ async function analyzeRisk(tx) {
 
         let score = federatedPenalty;
         let localReasons = [];
+        let metadata = {};
 
-        // 1. Velocity Check
-        profile.recentTransactions = profile.recentTransactions.filter(t => now - t.timestamp < 60000);
-        profile.recentTransactions.push({ timestamp: now, amount: tx.amount });
+        // 1. Velocity Check (REAL CALCULATION)
+        const ONE_MINUTE = 60000;
+        const recentTxs = profile.recentTransactions.filter(t => now - t.timestamp < ONE_MINUTE);
+        // Update profile with clean list + new one
+        profile.recentTransactions = [...recentTxs, { timestamp: now, amount: tx.amount }];
 
-        if (profile.recentTransactions.length > 5) {
+        const txCountLastMinute = profile.recentTransactions.length;
+        const avgTxAmount = recentTxs.length > 0 ? recentTxs.reduce((sum, t) => sum + t.amount, 0) / recentTxs.length : 0;
+
+        // Populate Metadata for Frontend
+        metadata.velocity_count = txCountLastMinute;
+        metadata.velocity_deviation = avgTxAmount > 0 ? Math.round(((tx.amount - avgTxAmount) / avgTxAmount) * 100) : 0;
+
+        if (txCountLastMinute > 5) {
             score += 40;
             localReasons.push('VELOCITY_SPIKE_FALLBACK');
         }
@@ -89,10 +99,11 @@ async function analyzeRisk(tx) {
         finalResult.score = Math.min(100, score);
         finalResult.reasons = [...finalResult.reasons, ...localReasons];
         finalResult.model_version = 'heuristic-fallback';
+        finalResult.metadata = metadata; // Pass to frontend
     }
 
     // FINAL DECISION LOGIC
-    if (finalResult.score >= 85) {
+    if (finalResult.score >= 80) { // Lowered from 85 to catch scores like 83
         finalResult.decision = 'BLOCK';
         // 2. BROADCAST THREAT (The "Warn Others" Signal)
         // If we blocked them, tell the federation to distrust this user

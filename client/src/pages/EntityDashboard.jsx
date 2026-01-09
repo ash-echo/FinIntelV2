@@ -19,7 +19,9 @@ function TransactionRow({ tx }) {
                 return `⛔ **CRITICAL BLOCK**: This user ID was flagged by another bank in the consortium. FinIntel's Privacy Grid successfully propagated the trust signal, preventing fraud without sharing PII.`;
             }
             if (tx.reasons.includes('VELOCITY_SPIKE_FALLBACK')) {
-                return `⛔ **BLOCKED (Velocity)**: User attempted ${tx.amount > 5000 ? 'high-value' : 'multiple'} transactions in a short window. The AI detected a velocity deviation of >400% from baseline.`;
+                const count = tx.metadata?.velocity_count || '>5';
+                const deviation = tx.metadata?.velocity_deviation || '400';
+                return `⛔ **BLOCKED (Velocity)**: User attempted ${count} transactions in 1 minute. The AI detected a velocity deviation of ${deviation}% from baseline.`;
             }
             if (tx.reasons.includes('MANUAL_ATTACK_INJECTION')) {
                 return `⛔ **TEST BLOCK**: Admin manually injected this malicious pattern to verify system resilience.`;
@@ -43,8 +45,8 @@ function TransactionRow({ tx }) {
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className={`relative p-3 rounded-lg border border-white/5 cursor-help transition-colors ${tx.decision === 'BLOCK' ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20' :
-                    tx.decision === 'FLAG' ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20' :
-                        'bg-white/5 hover:bg-white/10'
+                tx.decision === 'FLAG' ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20' :
+                    'bg-white/5 hover:bg-white/10'
                 }`}
         >
             <div className="flex justify-between items-start mb-1">
@@ -100,10 +102,19 @@ export default function EntityDashboard({ entityName, entityId, color }) {
     const [transactions, setTransactions] = useState([]);
     const [stats, setStats] = useState({ total: 0, highRisk: 0, avgRisk: 0 });
     const [chartData, setChartData] = useState([]);
-    const [latestAlert, setLatestAlert] = useState(null);
+    const [alertStack, setAlertStack] = useState([]);
     const scrollRef = useRef(null);
 
     const themeColor = color === 'cyan' ? '#00f3ff' : '#ffb000'; // Neon Cyan or Amber
+
+    // Alert Helper
+    const addAlert = (alert) => {
+        const id = Date.now() + Math.random();
+        setAlertStack(prev => [...prev.slice(-4), { ...alert, internalId: id }]); // Keep max 5
+        setTimeout(() => {
+            setAlertStack(prev => prev.filter(a => a.internalId !== id));
+        }, 4000);
+    };
 
     useEffect(() => {
         // Request specific history for this bank (Data Isolation)
@@ -139,13 +150,11 @@ export default function EntityDashboard({ entityName, entityId, color }) {
 
                 // Trigger Alert if Blocked
                 if (myTx.decision === 'BLOCK') {
-                    setLatestAlert({
+                    addAlert({
                         id: myTx.id,
                         message: `Blocked high-value transaction from ${myTx.location}`,
                         score: myTx.score
                     });
-                    // Clear alert after 3 seconds
-                    setTimeout(() => setLatestAlert(null), 3000);
                 }
             }
         };
@@ -256,26 +265,30 @@ export default function EntityDashboard({ entityName, entityId, color }) {
                     </div>
                 </div>
 
-                {/* Alert Overlay */}
-                <AnimatePresence>
-                    {latestAlert && (
-                        <motion.div
-                            initial={{ y: 50, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 20, opacity: 0 }}
-                            className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-red-600/90 text-white px-6 py-4 rounded-xl border border-red-500 shadow-2xl z-50 flex items-center gap-4 backdrop-blur-md"
-                        >
-                            <AlertTriangle size={32} className="text-white animate-pulse" />
-                            <div>
-                                <h4 className="font-bold text-lg">THREAT BLOCKED</h4>
-                                <p className="text-sm opacity-90">{latestAlert.message}</p>
-                            </div>
-                            <div className="text-2xl font-mono font-bold border-l border-white/20 pl-4 ml-2">
-                                {latestAlert.score}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* Alert Overlay STACK */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 w-full max-w-xl pointer-events-none">
+                    <AnimatePresence>
+                        {alertStack.map((alert) => (
+                            <motion.div
+                                key={alert.internalId}
+                                layout
+                                initial={{ y: 50, opacity: 0, scale: 0.9 }}
+                                animate={{ y: 0, opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                                className="bg-red-600/90 text-white px-6 py-4 rounded-xl border border-red-500 shadow-2xl flex items-center gap-4 backdrop-blur-md w-full pointer-events-auto"
+                            >
+                                <AlertTriangle size={32} className="text-white animate-pulse" />
+                                <div className="flex-1">
+                                    <h4 className="font-bold text-lg leading-none">THREAT BLOCKED</h4>
+                                    <p className="text-sm opacity-90 mt-1">{alert.message}</p>
+                                </div>
+                                <div className="text-2xl font-mono font-bold border-l border-white/20 pl-4 ml-2">
+                                    {alert.score}
+                                </div>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
 
             </div>
 

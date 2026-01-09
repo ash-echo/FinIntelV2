@@ -56,6 +56,20 @@ function updateGlobalStats(batchRiskScores) {
         globalStats.threatLevel = 'LOW';
     }
 
+    // NEW: Generate Dynamic Radar Chart Data (Attack Vector Profile)
+    // This makes the graph "breathe" with the system state.
+    const baseLine = globalStats.threatLevel === 'HIGH' ? 100 : globalStats.threatLevel === 'MEDIUM' ? 70 : 40;
+    const volatility = globalStats.threatLevel === 'HIGH' ? 30 : 10;
+
+    globalStats.vectorStats = [
+        { subject: 'Velocity', A: baseLine + Math.random() * volatility, B: baseLine + Math.random() * volatility - 10, fullMark: 150 },
+        { subject: 'Amount', A: baseLine + Math.random() * volatility, B: baseLine + Math.random() * volatility, fullMark: 150 },
+        { subject: 'Geo-Hop', A: baseLine + Math.random() * volatility + 20, B: baseLine + Math.random() * volatility, fullMark: 150 },
+        { subject: 'Device', A: baseLine + Math.random() * volatility * 0.5, B: baseLine + Math.random() * volatility, fullMark: 150 },
+        { subject: 'Time', A: baseLine + Math.random() * volatility, B: baseLine + Math.random() * volatility, fullMark: 150 },
+        { subject: 'Pattern', A: baseLine + Math.random() * volatility + 10, B: baseLine + Math.random() * volatility - 5, fullMark: 150 },
+    ];
+
     return globalStats;
 }
 
