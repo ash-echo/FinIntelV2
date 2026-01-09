@@ -11,7 +11,7 @@
 
 Sentinel Core operates on a **Decentralized Federated Architecture**. Unlike traditional systems where data is engaged to a central server (high privacy risk), Sentinel restricts raw transaction data to the local "Bank Node". Only mathematical gradients (model updates) traverse the network.
 
-![System Architecture](file:///C:/Users/Ashwath/.gemini/antigravity/brain/3c84277b-a574-425d-b6d4-5a88b9d8e9da/architecture_diagram_1767948726709.png)
+![System Architecture](architecture_diagram_1767948726709.png)
 
 ---
 
@@ -19,7 +19,7 @@ Sentinel Core operates on a **Decentralized Federated Architecture**. Unlike tra
 
 When a new attack vector (e.g., a "Layering" Scheme) is detected at one bank, the entire network develops immunity within milliseconds.
 
-![Immunity Workflow](file:///C:/Users/Ashwath/.gemini/antigravity/brain/3c84277b-a574-425d-b6d4-5a88b9d8e9da/workflow_diagram_1767948747433.png)
+![Immunity Workflow](workflow_diagram_1767948747433.png)
 
 ---
 
