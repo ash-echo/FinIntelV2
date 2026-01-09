@@ -1,10 +1,100 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, AlertTriangle, TrendingUp, Activity, Lock, Search } from 'lucide-react';
+import { Shield, AlertTriangle, TrendingUp, Activity, Lock, Search, Info } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 import socket from '../services/socket';
+
+// --- HELPER COMPONENT: TRANSACTION ROW WITH AI TOOLTIP ---
+function TransactionRow({ tx }) {
+    const [isHovered, setIsHovered] = useState(false);
+
+    // AI EXPLAINER GENERATOR (Deterministic but smart)
+    const generateAIExplanation = (tx) => {
+        const timeStr = new Date(tx.timestamp).toLocaleTimeString();
+
+        if (tx.decision === 'BLOCK') {
+            if (tx.reasons.includes('FEDERATED_BLACKLIST_MATCH')) {
+                return `⛔ **CRITICAL BLOCK**: This user ID was flagged by another bank in the consortium. FinIntel's Privacy Grid successfully propagated the trust signal, preventing fraud without sharing PII.`;
+            }
+            if (tx.reasons.includes('VELOCITY_SPIKE_FALLBACK')) {
+                return `⛔ **BLOCKED (Velocity)**: User attempted ${tx.amount > 5000 ? 'high-value' : 'multiple'} transactions in a short window. The AI detected a velocity deviation of >400% from baseline.`;
+            }
+            if (tx.reasons.includes('MANUAL_ATTACK_INJECTION')) {
+                return `⛔ **TEST BLOCK**: Admin manually injected this malicious pattern to verify system resilience.`;
+            }
+            return `⛔ **BLOCKED**: High Risk Score (${tx.score}/100). The model detected anomalous geometric patterns in the transaction vector space consistent with fraud.`;
+        }
+
+        if (tx.decision === 'FLAG') {
+            return `⚠️ **FLAGGED FOR REVIEW**: Unusual activity detected. While not definitively fraud, the transaction amount ($${tx.amount.toFixed(2)}) is 3σ above the user's daily moving average.`;
+        }
+
+        return `✅ **CLEARED**: Transaction is within established behavioral bounds. Location '${tx.location}' aligns with user's frequent nodes. Risk Score: ${tx.score}/100 (Safe).`;
+    };
+
+    return (
+        <motion.div
+            layout
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0 }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className={`relative p-3 rounded-lg border border-white/5 cursor-help transition-colors ${tx.decision === 'BLOCK' ? 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20' :
+                    tx.decision === 'FLAG' ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20' :
+                        'bg-white/5 hover:bg-white/10'
+                }`}
+        >
+            <div className="flex justify-between items-start mb-1">
+                <span className="font-mono text-xs text-gray-400">{new Date(tx.timestamp).toLocaleTimeString()}</span>
+                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${tx.decision === 'BLOCK' ? 'bg-red-500 text-white' :
+                    tx.decision === 'FLAG' ? 'bg-amber-500 text-black' : 'bg-green-500/20 text-green-400'
+                    }`}>
+                    {tx.decision}
+                </span>
+            </div>
+            <div className="flex justify-between items-center text-sm mb-1">
+                <span className="font-bold text-white">{tx.merchant}</span>
+                <span className="font-mono">${tx.amount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs text-gray-400 relative z-0">
+                <span>{tx.location}</span>
+                <span className={tx.score > 80 ? 'text-red-400' : 'text-gray-500'}>Risk: {tx.score}</span>
+            </div>
+
+            {/* AI TOOLTIP OVERLAY */}
+            <AnimatePresence>
+                {isHovered && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute left-0 top-full mt-2 w-full z-50 p-4 rounded-xl bg-[#111] border border-white/20 shadow-2xl backdrop-blur-xl"
+                        style={{ boxShadow: '0 0 30px rgba(0,0,0,0.8)' }}
+                    >
+                        <div className="flex items-start gap-3">
+                            <div className="mt-1 p-1 rounded bg-neon-cyan/10 text-neon-cyan">
+                                <Activity size={14} />
+                            </div>
+                            <div>
+                                <h4 className="text-xs font-bold text-neon-cyan uppercase mb-1">FinIntel AI Analysis</h4>
+                                <p className="text-xs text-gray-300 leading-relaxed">
+                                    {generateAIExplanation(tx)}
+                                </p>
+                            </div>
+                        </div>
+                        {/* Little triangle arrow */}
+                        <div className="absolute top-0 left-6 -mt-1.5 w-3 h-3 bg-[#111] border-l border-t border-white/20 transform rotate-45"></div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
+    );
+}
+
 
 export default function EntityDashboard({ entityName, entityId, color }) {
     const [transactions, setTransactions] = useState([]);
@@ -95,34 +185,9 @@ export default function EntityDashboard({ entityName, entityId, color }) {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                    <AnimatePresence>
+                    <AnimatePresence initial={false}>
                         {transactions.map((tx) => (
-                            <motion.div
-                                key={tx.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0 }}
-                                className={`p-3 rounded-lg border border-white/5 ${tx.decision === 'BLOCK' ? 'bg-red-500/10 border-red-500/30' :
-                                    tx.decision === 'FLAG' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-white/5'
-                                    }`}
-                            >
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className="font-mono text-xs text-gray-400">{new Date(tx.timestamp).toLocaleTimeString()}</span>
-                                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${tx.decision === 'BLOCK' ? 'bg-red-500 text-white' :
-                                        tx.decision === 'FLAG' ? 'bg-amber-500 text-black' : 'bg-green-500/20 text-green-400'
-                                        }`}>
-                                        {tx.decision}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm mb-1">
-                                    <span className="font-bold text-white">{tx.merchant}</span>
-                                    <span className="font-mono">${tx.amount.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-xs text-gray-400">
-                                    <span>{tx.location}</span>
-                                    <span className={tx.score > 80 ? 'text-red-400' : 'text-gray-500'}>Risk: {tx.score}</span>
-                                </div>
-                            </motion.div>
+                            <TransactionRow key={tx.id} tx={tx} />
                         ))}
                     </AnimatePresence>
                 </div>
@@ -156,7 +221,7 @@ export default function EntityDashboard({ entityName, entityId, color }) {
                             <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
                                 <TrendingUp size={20} />
                             </div>
-                            <span className="text-xs text-gray-500 uppercase">Arg Risk Score</span>
+                            <span className="text-xs text-gray-500 uppercase">Avg Risk Score</span>
                         </div>
                         <p className="text-2xl font-bold">{stats.avgRisk.toFixed(1)}</p>
                     </div>

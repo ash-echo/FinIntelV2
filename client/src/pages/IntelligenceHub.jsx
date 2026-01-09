@@ -127,6 +127,21 @@ export default function IntelligenceHub() {
             {/* SIDEBAR: Correlation Matrix & Stats */}
             <div className="col-span-4 flex flex-col gap-6">
 
+                <div className="flex gap-4 mb-4">
+                    <button
+                        onClick={() => {
+                            socket.emit('trigger-cross-bank');
+                            alert('Federation Attack Simulation Started: Watch the logs!');
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors"
+                    >
+                        <Shield size={16} /> Test Cross-Bank Defense
+                    </button>
+                    <button className="flex items-center gap-2 px-4 py-2 bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 rounded-lg hover:bg-neon-cyan/20 transition-colors">
+                        <Share2 size={16} /> Live Network Graph
+                    </button>
+                </div>
+
                 {/* RADAR CHART: Cross-Entity Correlation */}
                 <div className="glass-panel p-6 rounded-xl flex-1 flex flex-col">
                     <h3 className="text-lg font-medium mb-4 flex items-center gap-2">

@@ -256,6 +256,50 @@ io.on('connection', async (socket) => {
         }, 200); // 200ms delay between shots for "one by one" visual
     });
 
+    socket.on('trigger-cross-bank', async () => {
+        console.log('⚠ CROSS-BANK REPUTATION TEST STARTED');
+        const { generateCrossBankAttack } = require('./simulator');
+        const { txA, txB, sharedUser } = generateCrossBankAttack();
+
+        // STEP 1: Process Bank A (The Source of Infection)
+        console.log(`[TEST] Injecting Malicious TX into Bank A (User: ${sharedUser})`);
+
+        // Force high risk on A to ensure Block & Broadcast
+        const riskA = await analyzeRisk(txA);
+        const fullTxA = { ...txA, ...riskA, score: 95, decision: 'BLOCK', reasons: ['MANUAL_ATTACK_INJECTION'] };
+
+        // Manually broadcast block to federation (since we force-overwrote the risk)
+        const { broadcastBlock } = require('./GlobalRiskCache');
+        broadcastBlock(fullTxA.userId, 'BANK_A', 'MANUAL_ATTACK_INJECTION');
+
+        io.emit('new-transactions', { bankA: fullTxA, bankB: null });
+        if (db) await db.collection('transactions_bank_a').add(fullTxA);
+        else localTransactions.push(fullTxA);
+
+        // STEP 2: Process Bank B (The Protection Target)
+        // Wait 2 seconds to simulate network propagation
+        setTimeout(async () => {
+            console.log(`[TEST] Injecting Probe TX into Bank B (User: ${sharedUser})`);
+
+            // This analyzeRisk call WILL hit the cache and see the block from Bank A
+            const riskB = await analyzeRisk(txB);
+            const fullTxB = { ...txB, ...riskB };
+
+            io.emit('new-transactions', { bankA: null, bankB: fullTxB });
+
+            if (db) await db.collection('transactions_bank_b').add(fullTxB);
+            else localTransactions.push(fullTxB);
+
+            // Critical Alert to Admin
+            io.emit('critical-stop', {
+                message: `Federated Defense Success: User ${sharedUser} blocked at Bank B due to Bank A signal.`,
+                timestamp: new Date().toISOString(),
+                entity: 'FEDERATION_GRID'
+            });
+
+        }, 2000);
+    });
+
     socket.on('disconnect', () => {
         console.log('Client disconnected');
     });

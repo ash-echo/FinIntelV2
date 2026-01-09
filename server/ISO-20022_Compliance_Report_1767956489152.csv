@@ -1,0 +1,3 @@
+MsgId,CreDtTm,InitgPty,Sts,RskScr,Dtl
+MSG-1767956463740,4:31:03 PM,ADMIN_NODE,SUCCESS,29.483240662545303,Administrator started federation simulation
+MSG-1,4:30:47 PM,ADMIN_NODE,INFO,29.483240662545303,System initialized. Waiting for federation handshake...

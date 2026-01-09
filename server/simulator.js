@@ -27,10 +27,10 @@ function generateTransaction(bankId) {
 }
 
 // NEW: Generate a "Coordinated Attack" Burst
-function generateAttackBatch(bankId) {
+function generateAttackBatch(bankId, overrideUser = null) {
     const attacks = [];
     // Target a specific user for "Velocity" attack
-    const targetUser = 'user_TARGET';
+    const targetUser = overrideUser || 'user_TARGET';
     const targetLoc = 'Unknown_Proxy_IP';
 
     for (let i = 0; i < 10; i++) {
@@ -49,4 +49,37 @@ function generateAttackBatch(bankId) {
     return attacks;
 }
 
-module.exports = { generateTransaction, generateAttackBatch };
+// NEW: Simulate Cross-Bank Scenario
+function generateCrossBankAttack() {
+    const sharedUser = `MALICIOUS_SYNDICATE_${Math.floor(Math.random() * 999)}`;
+
+    // 1. Attack on Bank A (High Risk)
+    const txA = {
+        id: uuidv4(),
+        bankId: 'BANK_A',
+        timestamp: new Date().toISOString(),
+        amount: 8500, // Suspicious
+        currency: 'USD',
+        merchant: 'DarkWeb_Relay',
+        location: 'Kyiv_Proxy_Node',
+        deviceId: 'Rooted_Android',
+        userId: sharedUser
+    };
+
+    // 2. Probe on Bank B (Low Risk - would pass if not for Federation)
+    const txB = {
+        id: uuidv4(),
+        bankId: 'BANK_B', // Different Bank
+        timestamp: new Date(Date.now() + 2000).toISOString(), // 2 seconds later
+        amount: 45, // Tiny amount (Tester)
+        currency: 'USD',
+        merchant: 'Starbucks',
+        location: 'New York', // Normal location
+        deviceId: 'iPhone 14',
+        userId: sharedUser // SAME USER ID
+    };
+
+    return { txA, txB, sharedUser };
+}
+
+module.exports = { generateTransaction, generateAttackBatch, generateCrossBankAttack };
