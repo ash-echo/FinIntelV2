@@ -22,16 +22,33 @@ const io = new Server(server, {
 // State (In-memory fallback)
 let localTransactions = [];
 const MAX_HISTORY = 100;
+let simulationRunning = false; // Start paused
+let targetedRisk = null; // { bankId: 'BANK_A', type: 'critical' }
 
 // Simulation Loop
 setInterval(async () => {
+    if (!simulationRunning) return;
+
     // 1. Generate Transactions
     const txA = generateTransaction('BANK_A');
     const txB = generateTransaction('BANK_B');
 
     // 2. Analyze Risk
-    const riskA = analyzeRisk(txA);
-    const riskB = analyzeRisk(txB);
+    let riskA = analyzeRisk(txA);
+    let riskB = analyzeRisk(txB);
+
+    // MANUAL OVERRIDE CHECK
+    let criticalStop = false;
+    if (targetedRisk) {
+        if (targetedRisk.bankId === 'BANK_A') {
+            riskA = { ...riskA, score: 99, decision: 'block', reasons: ['MANUAL_CRITICAL_OVERRIDE'] };
+            criticalStop = true;
+        } else if (targetedRisk.bankId === 'BANK_B') {
+            riskB = { ...riskB, score: 99, decision: 'block', reasons: ['MANUAL_CRITICAL_OVERRIDE'] };
+            criticalStop = true;
+        }
+        targetedRisk = null; // Reset
+    }
 
     const fullTxA = { ...txA, ...riskA };
     const fullTxB = { ...txB, ...riskB };
@@ -71,7 +88,17 @@ setInterval(async () => {
         timestamp: new Date().toISOString()
     });
 
-}, 2000);
+    if (criticalStop) {
+        simulationRunning = false;
+        console.log('!!! CRITICAL STOP TRIGGERED !!!');
+        io.emit('critical-stop', {
+            message: 'High-Risk Attack Vector Detected - Simulation Halted',
+            timestamp: new Date().toISOString()
+        });
+        io.emit('sim-status', false);
+    }
+
+}, 1500);
 
 io.on('connection', async (socket) => {
     console.log('Client connected:', socket.id);
@@ -152,6 +179,76 @@ io.on('connection', async (socket) => {
             const specificHistory = localTransactions.filter(t => t.bankId === bankId);
             socket.emit('init-history', specificHistory);
         }
+    });
+
+    // --- CONTROLS ---
+    socket.emit('sim-status', simulationRunning);
+
+    socket.on('start-sim', () => {
+        simulationRunning = true;
+        console.log('Command: START SIMULATION');
+        io.emit('sim-status', true);
+    });
+
+    socket.on('stop-sim', () => {
+        simulationRunning = false;
+        console.log('Command: STOP SIMULATION');
+        io.emit('sim-status', false);
+    });
+
+    socket.on('trigger-risk', (bankId) => {
+        console.log(`Command: TRIGGER RISK for ${bankId}`);
+        targetedRisk = { bankId, type: 'critical' };
+    });
+
+    socket.on('trigger-attack-batch', async (bankId) => {
+        console.log(`Command: BATCH ATTACK on ${bankId}`);
+        simulationRunning = true; // Force start if not running
+        io.emit('sim-status', true);
+
+        const TOTAL_ATTACKS = 20;
+        let count = 0;
+
+        const interval = setInterval(() => {
+            count++;
+
+            // Generate a HIGH RISK transaction
+            const rawTx = generateTransaction(bankId);
+            // Manually override to be a threat
+            const attackTx = {
+                ...rawTx,
+                ...analyzeRisk(rawTx), // Get base risk structure
+                score: 85 + Math.floor(Math.random() * 14), // 85-99 score
+                decision: 'BLOCK',
+                reasons: ['COORDINATED_BATCH_ATTACK', 'VELOCITY_CHECK_FAIL']
+            };
+
+            // Broadcast it
+            const fullTxA = bankId === 'BANK_A' ? attackTx : null;
+            const fullTxB = bankId === 'BANK_B' ? attackTx : null;
+
+            io.emit('new-transactions', {
+                bankA: fullTxA,
+                bankB: fullTxB
+            });
+
+            // Store (basic locally)
+            localTransactions.push(attackTx);
+
+            if (count >= TOTAL_ATTACKS) {
+                clearInterval(interval);
+                simulationRunning = false;
+                console.log('!!! BATCH ATTACK COMPLETE - STOPPING !!!');
+
+                io.emit('critical-stop', {
+                    message: `20-Threat Botnet Cluster Detected on ${bankId} Node`,
+                    timestamp: new Date().toISOString(),
+                    entity: bankId
+                });
+                io.emit('sim-status', false);
+            }
+
+        }, 200); // 200ms delay between shots for "one by one" visual
     });
 
     socket.on('disconnect', () => {

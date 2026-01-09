@@ -1,8 +1,8 @@
 import React from 'react';
 import { FileText, Download, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-
-import { io } from 'socket.io-client';
+import socket from '../services/socket';
+import { useState, useEffect } from 'react';
 
 const AUDIT_DATA = [
     { time: '08:00', checks: 45, alerts: 2 },
@@ -14,7 +14,17 @@ const AUDIT_DATA = [
 ];
 
 export default function AdminDashboard() {
-    const socket = io('http://localhost:3001'); // Temporary direct connection for button
+    const [isSimRunning, setIsSimRunning] = useState(false);
+
+    useEffect(() => {
+        socket.on('sim-status', (status) => setIsSimRunning(status));
+        return () => socket.off('sim-status');
+    }, []);
+
+    const toggleSim = () => {
+        if (isSimRunning) socket.emit('stop-sim');
+        else socket.emit('start-sim');
+    };
 
     return (
         <div className="space-y-6">
@@ -26,15 +36,18 @@ export default function AdminDashboard() {
                     <p className="text-gray-400 text-sm">System-wide operational oversight</p>
                 </div>
 
-                <button
-                    onClick={() => {
-                        socket.emit('trigger-attack');
-                        alert('⚠️ CYBER ATTACK INITIATED: 20 Malicious Transactions Injected');
-                    }}
-                    className="px-6 py-2 bg-red-600/20 border border-red-500 text-red-100 font-bold rounded animate-pulse hover:bg-red-600 hover:text-white transition-all shadow-[0_0_15px_rgba(239,68,68,0.5)]"
-                >
-                    ☠️ TRIGGER LIVE ATTACK
-                </button>
+                <div className="flex gap-4">
+                    <button
+                        onClick={toggleSim}
+                        className={`px-6 py-2 border font-bold rounded transition-all flex items-center gap-2 ${isSimRunning
+                            ? 'bg-red-500/20 border-red-500 text-red-500 hover:bg-red-500 hover:text-white'
+                            : 'bg-green-500/20 border-green-500 text-green-500 hover:bg-green-500 hover:text-white'
+                            }`}
+                    >
+                        {isSimRunning ? '■ STOP SIMULATION' : '▶ START SIMULATION'}
+                    </button>
+
+                </div>
 
                 <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors">
                     <Download size={16} /> Export Report (CSV)

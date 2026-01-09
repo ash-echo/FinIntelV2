@@ -6,6 +6,9 @@ import LandingPage from './pages/LandingPage';
 import EntityDashboard from './pages/EntityDashboard';
 import IntelligenceHub from './pages/IntelligenceHub';
 import AdminDashboard from './pages/AdminDashboard';
+import CriticalAlertModal from './components/CriticalAlertModal';
+import socket from './services/socket';
+import { useState, useEffect } from 'react';
 
 function NavLink({ to, icon: Icon, label }) {
   const location = useLocation();
@@ -66,6 +69,18 @@ function Layout({ children }) {
 }
 
 function App() {
+  const [criticalAlert, setCriticalAlert] = useState(null);
+
+  useEffect(() => {
+    socket.on('critical-stop', (data) => {
+      setCriticalAlert(data);
+    });
+
+    return () => {
+      socket.off('critical-stop');
+    };
+  }, []);
+
   return (
     <Router>
       <Layout>
@@ -76,6 +91,7 @@ function App() {
           <Route path="/intelligence" element={<IntelligenceHub />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
+        <CriticalAlertModal alert={criticalAlert} onClose={() => setCriticalAlert(null)} />
       </Layout>
     </Router>
   );

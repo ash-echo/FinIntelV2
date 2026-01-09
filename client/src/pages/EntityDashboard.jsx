@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, AlertTriangle, TrendingUp, Activity, Lock, Search } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-const socket = io('http://localhost:3001');
+import socket from '../services/socket';
 
 export default function EntityDashboard({ entityName, entityId, color }) {
     const [transactions, setTransactions] = useState([]);
@@ -103,13 +103,13 @@ export default function EntityDashboard({ entityName, entityId, color }) {
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0 }}
                                 className={`p-3 rounded-lg border border-white/5 ${tx.decision === 'BLOCK' ? 'bg-red-500/10 border-red-500/30' :
-                                        tx.decision === 'FLAG' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-white/5'
+                                    tx.decision === 'FLAG' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-white/5'
                                     }`}
                             >
                                 <div className="flex justify-between items-start mb-1">
                                     <span className="font-mono text-xs text-gray-400">{new Date(tx.timestamp).toLocaleTimeString()}</span>
                                     <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${tx.decision === 'BLOCK' ? 'bg-red-500 text-white' :
-                                            tx.decision === 'FLAG' ? 'bg-amber-500 text-black' : 'bg-green-500/20 text-green-400'
+                                        tx.decision === 'FLAG' ? 'bg-amber-500 text-black' : 'bg-green-500/20 text-green-400'
                                         }`}>
                                         {tx.decision}
                                     </span>
@@ -247,6 +247,21 @@ export default function EntityDashboard({ entityName, entityId, color }) {
                         <p>[{new Date().toLocaleTimeString()}] Node Discovery: Peers=12</p>
                     </div>
                 </div>
+
+                {/* ATTACK TRIGGER BUTTON */}
+                <button
+                    onClick={() => socket.emit('trigger-attack-batch', entityId)}
+                    className="w-full py-4 rounded-xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+                    style={{
+                        backgroundColor: `rgba(${color === 'cyan' ? '0, 243, 255' : '255, 176, 0'}, 0.1)`,
+                        border: `1px solid ${themeColor}`,
+                        color: themeColor,
+                        boxShadow: `0 0 20px rgba(${color === 'cyan' ? '0, 243, 255' : '255, 176, 0'}, 0.2)`
+                    }}
+                >
+                    <AlertTriangle size={20} />
+                    Verify Load Shedding (Attack Sim)
+                </button>
             </div>
 
         </div>
