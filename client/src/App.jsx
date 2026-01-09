@@ -36,11 +36,9 @@ function Layout({ children }) {
       {/* Top Navigation */}
       <header className="fixed top-0 w-full z-50 glass-panel border-b-0 border-white/10 h-16 flex items-center justify-between px-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-gradient-to-br from-neon-cyan to-blue-600 flex items-center justify-center shadow-lg shadow-neon-cyan/20">
-            <Shield size={18} className="text-black" />
-          </div>
-          <span className="text-lg font-bold tracking-wider font-mono">
-            SENTINEL<span className="text-neon-cyan">_CORE</span>
+          <img src="/logo.png" alt="FinIntel Logo" className="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(0,243,255,0.5)]" />
+          <span className="text-xl font-bold tracking-wider font-mono">
+            Fin<span className="text-neon-cyan">Intel</span>
           </span>
         </div>
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { Shield, Share2, Lock, ArrowRight, Activity, Terminal, Database, Server } from 'lucide-react';
+import { Shield, Share2, Lock, ArrowRight, Activity, Terminal, Database, Server, Code, Cpu, Network } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // --- COMPONENTS ---
@@ -41,10 +41,17 @@ function SectionHelper({ title, children }) {
     )
 }
 
+function TechBadge({ label, color }) {
+    return (
+        <span className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-mono border ${color} bg-black/50 backdrop-blur-md`}>
+            {label}
+        </span>
+    );
+}
+
 export default function LandingPage() {
     const { scrollY } = useScroll();
     const y1 = useTransform(scrollY, [0, 500], [0, 200]);
-    const y2 = useTransform(scrollY, [0, 500], [0, -150]);
 
     return (
         <div className="min-h-screen bg-[#050505] text-white selection:bg-neon-cyan selection:text-black overflow-x-hidden">
@@ -80,6 +87,13 @@ export default function LandingPage() {
                         Detect sophisticated attacks in real-time without ever sharing customer data.
                     </p>
 
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-16 px-4 flex-wrap">
+                        <TechBadge label="Python 3.11" color="border-yellow-500/50 text-yellow-500" />
+                        <TechBadge label="FastAPI Microservice" color="border-emerald-500/50 text-emerald-500" />
+                        <TechBadge label="XGBoost + IsoForest" color="border-blue-500/50 text-blue-500" />
+                        <TechBadge label="Socket.IO Realtime" color="border-purple-500/50 text-purple-500" />
+                    </div>
+
                     <div className="flex flex-col md:flex-row items-center justify-center gap-6">
                         <Link to="/intelligence" className="group relative px-10 py-5 rounded-lg bg-neon-cyan text-black font-bold tracking-wide overflow-hidden shadow-[0_0_30px_rgba(0,243,255,0.3)] hover:shadow-[0_0_50px_rgba(0,243,255,0.5)] transition-all">
                             <span className="relative z-10 flex items-center gap-2">
@@ -93,15 +107,7 @@ export default function LandingPage() {
                     </div>
                 </motion.div>
 
-                {/* Scroll Indicator */}
-                <motion.div
-                    animate={{ y: [0, 10, 0] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="absolute bottom-10 left-1/2 -translate-x-1/2 text-gray-500 text-sm font-mono flex flex-col items-center gap-2"
-                >
-                    SCROLL TO EXPLORE
-                    <div className="w-px h-12 bg-gradient-to-b from-neon-cyan/50 to-transparent" />
-                </motion.div>
+
             </section>
 
 
@@ -121,13 +127,14 @@ export default function LandingPage() {
                         whileInView={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.8 }}
                         viewport={{ once: true }}
-                        className="relative rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] group"
+                        className="relative rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] group max-w-5xl mx-auto bg-black"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10 pointer-events-none" />
+                        {/* IMAGE FIX: max-h-[600px] and object-contain to prevent overflow */}
                         <img
                             src="/assets/architecture.png"
                             alt="Sentinel Core Architecture"
-                            className="w-full h-auto object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-700 hover:scale-[1.02] transition-transform"
+                            className="w-full max-h-[600px] object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-700"
                         />
 
                         <div className="absolute bottom-0 left-0 right-0 p-8 z-20 bg-gradient-to-t from-black to-transparent">
@@ -219,10 +226,45 @@ export default function LandingPage() {
                             initial={{ opacity: 0, x: 50 }}
                             whileInView={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.8 }}
-                            className="rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,243,255,0.15)] border border-white/10"
+                            className="rounded-xl overflow-hidden shadow-[0_0_50px_rgba(0,243,255,0.15)] border border-white/10 bg-black"
                         >
-                            <img src="/assets/workflow.png" alt="Workflow" className="w-full" />
+                            {/* IMAGE FIX: Object-contain to prevent zoom issues */}
+                            <img
+                                src="/assets/workflow.png"
+                                alt="Workflow"
+                                className="w-full max-h-[500px] object-contain"
+                            />
                         </motion.div>
+                    </div>
+                </div>
+            </section>
+
+
+            {/* TECHNICAL DEEP DIVE SECTION (NEW) */}
+            <section className="py-24 px-4 relative z-10 bg-[#050505]">
+                <div className="max-w-7xl mx-auto glass-panel p-10 rounded-2xl border border-white/5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                        <div className="p-4">
+                            <div className="w-12 h-12 mx-auto bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500 mb-4">
+                                <Cpu size={24} />
+                            </div>
+                            <h3 className="font-bold text-lg text-white mb-2">Hybrid Compute</h3>
+                            <p className="text-sm text-gray-400">Node.js executes high-throughput I/O, while Python Microservices handle heavy ML inference.</p>
+                        </div>
+                        <div className="p-4 border-l border-white/5 border-r">
+                            <div className="w-12 h-12 mx-auto bg-purple-500/10 rounded-full flex items-center justify-center text-purple-500 mb-4">
+                                <Network size={24} />
+                            </div>
+                            <h3 className="font-bold text-lg text-white mb-2">Socket-Mesh</h3>
+                            <p className="text-sm text-gray-400">Real-time bi-directional events ensure that a threat blocked on Node A is instantly blocked on Node B.</p>
+                        </div>
+                        <div className="p-4">
+                            <div className="w-12 h-12 mx-auto bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-4">
+                                <Code size={24} />
+                            </div>
+                            <h3 className="font-bold text-lg text-white mb-2">Isolation Forest</h3>
+                            <p className="text-sm text-gray-400">Unsupervised anomaly detection catches "Zero-Day" attacks that traditional rule engines miss.</p>
+                        </div>
                     </div>
                 </div>
             </section>
