@@ -28,7 +28,7 @@ function analyzeRisk(tx) {
     const profile = userProfiles.get(tx.userId);
     const now = Date.now();
 
-    // --- 1. VELOCITY CHECK (Bot/Spam Detection) ---
+    // --- 1. VELOCITY CHECK (Bot/Spam Detection) --
     // Filter transactions from the last 60 seconds
     profile.recentTransactions = profile.recentTransactions.filter(t => now - t.timestamp < 60000);
     profile.recentTransactions.push({ timestamp: now, amount: tx.amount });
